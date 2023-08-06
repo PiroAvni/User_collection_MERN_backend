@@ -16,9 +16,9 @@ app.use(express.json());
 app.use("/uploads",express.static("./uploads"));
 app.use("/files",express.static("./public/files"));
 
-app.get('/', (req, res) => {
-    res.json({ App: 'Welcome to the Server!!' })
-  })
+// app.get('/', (req, res) => {
+//     res.json({ App: 'Welcome to the Server!!' })
+//   })
   
 
 app.use(router);

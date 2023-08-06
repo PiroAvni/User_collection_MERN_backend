@@ -2,6 +2,7 @@ const users = require("../models/usersSchema");
 const moment = require("moment");
 const csv = require("fast-csv");
 const fs = require("fs");
+require('dotenv').config()
 const BASE_URL = process.env.BASE_URL
 
 // register user
@@ -128,34 +129,89 @@ exports.userdelete = async (req, res) => {
     }
 }
 
-// chnage status
+// Change user status
 exports.userstatus = async (req, res) => {
     const { id } = req.params;
     const { data } = req.body;
 
     try {
-        const userstatusupdate = await users.findByIdAndUpdate({ _id: id }, { status: data }, { new: true });
-        res.status(200).json(userstatusupdate)
+        const updatedUser = await users.findByIdAndUpdate(
+            id,
+            { status: data },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        res.status(200).json(updatedUser);
     } catch (error) {
-        res.status(401).json(error)
+        res.status(401).json(error);
     }
-}
+};
 
 // export user
+// exports.userExport = async (req, res) => {
+//     try {
+//         const usersdata = await users.find();
+
+//         const csvStream = csv.format({ headers: true });
+
+//         if (!fs.existsSync("public/files/export/")) {
+//             if (!fs.existsSync("public/files")) {
+//                 fs.mkdirSync("public/files/");
+//             }
+//             if (!fs.existsSync("public/files/export")) {
+//                 fs.mkdirSync("./public/files/export/");
+//             }
+//         }
+
+//         const writablestream = fs.createWriteStream(
+//             "public/files/export/users.csv"
+//         );
+
+//         csvStream.pipe(writablestream);
+
+//         writablestream.on("finish", function () {
+//             res.json({
+//                 downloadUrl: `${BASE_URL}/files/export/users.csv`,
+//             });
+//         });
+//         if (usersdata.length > 0) {
+//             usersdata.map((user) => {
+//                 csvStream.write({
+//                     FirstName: user.fname ? user.fname : "-",
+//                     LastName: user.lname ? user.lname : "-",
+//                     Email: user.email ? user.email : "-",
+//                     Phone: user.mobile ? user.mobile : "-",
+//                     Gender: user.gender ? user.gender : "-",
+//                     Status: user.status ? user.status : "-",
+//                     Profile: user.profile ? user.profile : "-",
+//                     Location: user.location ? user.location : "-",
+//                     DateCreated: user.datecreated ? user.datecreated : "-",
+//                     DateUpdated: user.dateUpdated ? user.dateUpdated : "-",
+//                 })
+//             })
+//         }
+//         csvStream.end();
+//         writablestream.end();
+
+//     } catch (error) {
+//         res.status(401).json(error)
+//     }
+// }
+
+// Export user data as CSV
 exports.userExport = async (req, res) => {
     try {
         const usersdata = await users.find();
 
         const csvStream = csv.format({ headers: true });
 
-        if (!fs.existsSync("public/files/export/")) {
-            if (!fs.existsSync("public/files")) {
-                fs.mkdirSync("public/files/");
-            }
-            if (!fs.existsSync("public/files/export")) {
-                fs.mkdirSync("./public/files/export/");
-            }
-        }
+        // Create directories if they don't exist
+        await fs.promises.mkdir("public/files", { recursive: true });
+        await fs.promises.mkdir("public/files/export", { recursive: true });
 
         const writablestream = fs.createWriteStream(
             "public/files/export/users.csv"
@@ -163,31 +219,34 @@ exports.userExport = async (req, res) => {
 
         csvStream.pipe(writablestream);
 
-        writablestream.on("finish", function () {
-            res.json({
-                downloadUrl: `${BASE_URL}/files/export/users.csv`,
-            });
-        });
         if (usersdata.length > 0) {
-            usersdata.map((user) => {
+            usersdata.forEach((user) => {
                 csvStream.write({
-                    FirstName: user.fname ? user.fname : "-",
-                    LastName: user.lname ? user.lname : "-",
-                    Email: user.email ? user.email : "-",
-                    Phone: user.mobile ? user.mobile : "-",
-                    Gender: user.gender ? user.gender : "-",
-                    Status: user.status ? user.status : "-",
-                    Profile: user.profile ? user.profile : "-",
-                    Location: user.location ? user.location : "-",
-                    DateCreated: user.datecreated ? user.datecreated : "-",
-                    DateUpdated: user.dateUpdated ? user.dateUpdated : "-",
-                })
-            })
+                    FirstName: user.fname || "-",
+                    LastName: user.lname || "-",
+                    Email: user.email || "-",
+                    Phone: user.mobile || "-",
+                    Gender: user.gender || "-",
+                    Status: user.status || "-",
+                    Profile: user.profile || "-",
+                    Location: user.location || "-",
+                    DateCreated: user.datecreated || "-",
+                    DateUpdated: user.dateUpdated || "-",
+                });
+            });
         }
-        csvStream.end();
-        writablestream.end();
 
+        csvStream.end();
+
+        // Wait for the stream to finish writing
+        await new Promise((resolve) => {
+            writablestream.on("finish", resolve);
+        });
+
+        res.json({
+            downloadUrl: `${BASE_URL}/files/export/users.csv`,
+        });
     } catch (error) {
-        res.status(401).json(error)
+        res.status(401).json(error);
     }
-}
+};
